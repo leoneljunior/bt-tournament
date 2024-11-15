@@ -1,0 +1,148 @@
+/* Global styles */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f7f7f7;
+    margin: 0;
+    padding: 0;
+  }
+  
+  h1 {
+    text-align: center;
+    color: #333;
+    font-size: 28px;
+    margin-bottom: 20px;
+  }
+  
+  .container {
+    max-width: 900px;
+    margin: 30px auto;
+    padding: 30px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+  
+  .tab-content {
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    margin-bottom: 30px;
+    border: 1px solid #ddd;
+  }
+  
+  button {
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 10px 0;
+    transition: background-color 0.3s ease;
+  }
+  
+  button:hover {
+    background-color: #45a049;
+  }
+  
+  button:disabled {
+    background-color: #ddd;
+    cursor: not-allowed;
+  }
+  
+  input {
+    padding: 12px;
+    margin: 10px 0;
+    font-size: 16px;
+    border-radius: 5px;
+    width: 100%;
+    border: 1px solid #ccc;
+    transition: border-color 0.3s ease;
+  }
+  
+  input:focus {
+    border-color: #4caf50;
+  }
+  
+  h3, h4, h5 {
+    font-size: 20px;
+    color: #333;
+    margin-bottom: 15px;
+  }
+  
+  ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  ul li {
+    padding: 12px;
+    margin: 8px 0;
+    background-color: #f1f1f1;
+    border-radius: 6px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  ul li span {
+    font-weight: bold;
+    margin-right: 10px;
+  }
+  
+  ul li:hover {
+    background-color: #e0e0e0;
+  }
+  
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    font-size: 20px;
+    color: #333;
+  }
+  
+  input[type="number"] {
+    width: 100px;
+    text-align: center;
+  }
+  
+  .pair-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .pair-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 15px;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .pair-item .pair-name {
+    font-weight: bold;
+    font-size: 16px;
+  }
+  
+  .pair-item .pair-name, .pair-item input {
+    flex-grow: 1;
+  }
+  
+  .pair-item input {
+    width: 120px;
+    margin-left: 10px;
+    padding: 8px;
+    font-size: 16px;
+    text-align: center;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    transition: border-color 0.3s ease;
+  }
+  
+  .pair-item input:focus {
+    border-color: #4caf50;
+  }
+  
