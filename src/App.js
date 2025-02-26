@@ -6,12 +6,10 @@ import "./styles/global.css";
 const LOCAL_STORAGE_KEY = "torneios";
 
 const App = () => {
-  const [step, setStep] = useState(0); // 0 = Selecionar/Criar Torneio
-
+  const [step, setStep] = useState(0); 
   const [torneios, setTorneios] = useState({});
   const [currentTournament, setCurrentTournament] = useState("");
 
-  // Dados do torneio atual
   const [players, setPlayers] = useState([]);
   const [pairs, setPairs] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -19,11 +17,12 @@ const App = () => {
 
   const [pairsGenerated, setPairsGenerated] = useState(false);
   const [groupsCreated, setGroupsCreated] = useState(false);
-
-  // Número de grupos
   const [numGroups, setNumGroups] = useState(2);
 
-  // Carrega torneios do localStorage ao montar
+  const [showModal, setShowModal] = useState(false);
+  const [modalTournamentName, setModalTournamentName] = useState("");
+
+  // Load from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (stored) {
@@ -31,34 +30,26 @@ const App = () => {
     }
   }, []);
 
-  // Sempre que `torneios` mudar, salva em localStorage
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(torneios));
   }, [torneios]);
 
-  // Determina em qual passo devemos entrar, de acordo com os dados já existentes
   const determineStepFromData = (data) => {
-    // Se já existem groups, pulamos diretamente ao passo 4 (ver resultados)
     if (data.groups && data.groups.length > 0) {
       return 4;
     }
-    // Se já existem pairs, mas não groups, então passo 3
     if (data.pairs && data.pairs.length > 0) {
       return 3;
     }
-    // Se só existem players, então passo 2
     if (data.players && data.players.length > 0) {
       return 2;
     }
-    // Caso contrário, passo 1
     return 1;
   };
 
-  // Seleciona ou cria torneio
   const handleSelectTorneio = (nomeTorneio) => {
     setCurrentTournament(nomeTorneio);
 
-    // Se o torneio não existe, cria
     if (!torneios[nomeTorneio]) {
       const novo = {
         players: [],
@@ -68,7 +59,6 @@ const App = () => {
       };
       setTorneios((prev) => ({ ...prev, [nomeTorneio]: novo }));
       
-      // Limpa estados locais
       setPlayers([]);
       setPairs([]);
       setGroups([]);
@@ -77,7 +67,6 @@ const App = () => {
       setGroupsCreated(false);
       setStep(1);
     } else {
-      // Se existe, carrega dados
       const data = torneios[nomeTorneio];
       setPlayers(data.players || []);
       setPairs(data.pairs || []);
@@ -91,7 +80,27 @@ const App = () => {
     }
   };
 
-  // Salvar dados do torneio atual no estado "torneios"
+  /** Removes a tournament from localStorage/state */
+  const handleRemoveTournament = (nomeTorneio) => {
+    const updated = { ...torneios };
+    delete updated[nomeTorneio];
+    setTorneios(updated);
+    if (currentTournament === nomeTorneio) {
+      setCurrentTournament("");
+      setStep(0);
+    }
+  };
+
+  const handleOpenTournamentModal = (tName) => {
+    setModalTournamentName(tName);
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setModalTournamentName("");
+  };
+
   const saveCurrentTournamentData = (updates) => {
     if (!currentTournament) return;
     setTorneios((prev) => ({
@@ -103,27 +112,22 @@ const App = () => {
     }));
   };
 
-  // Sempre que players mudar (no passo 1), salva e reseta flags
   useEffect(() => {
     if (step === 1 && currentTournament) {
       saveCurrentTournamentData({ players });
-      // Se mudar a lista de players, pares e grupos já não são mais válidos
       setPairsGenerated(false);
       setGroupsCreated(false);
     }
   }, [players, step]);
 
-  // Navegação
   const goNext = () => setStep((prev) => prev + 1);
   const goBack = () => step > 0 && setStep((prev) => prev - 1);
 
-  // Gera ou regera pares
   const generatePairs = () => {
     const playersWithTiebreak = players.map((p) => ({
       ...p,
       tiebreak: Math.random(),
     }));
-    // Ordenar por peso (skill) e depois por tiebreak
     const sorted = playersWithTiebreak.sort((a, b) =>
       a.skill !== b.skill ? a.skill - b.skill : a.tiebreak - b.tiebreak
     );
@@ -143,7 +147,6 @@ const App = () => {
 
     setPairs(newPairs);
     setPairsGenerated(true);
-    // Salva no torneio
     saveCurrentTournamentData({ pairs: newPairs });
   };
 
@@ -158,9 +161,44 @@ const App = () => {
     saveCurrentTournamentData({ groups: generatedGroups });
   };
 
+  const getTournamentGroups = (tName) => {
+    const tData = torneios[tName];
+    if (!tData || !tData.groups) return [];
+    return tData.groups;
+  };
+
   return (
     <div className="app-container">
       <h1>Organizador de Torneios BT</h1>
+
+      {showModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2 className="modal-tournament-title">{modalTournamentName}</h2>
+            <p>Grupos e duplas:</p>
+
+            <div className="modal-groups-container">
+              {getTournamentGroups(modalTournamentName).length === 0 && (
+                <p><em>Nenhum grupo criado para este torneio.</em></p>
+              )}
+
+              {getTournamentGroups(modalTournamentName).map((group, idx) => (
+                <div className="group-card" key={idx}>
+                  <h3>Grupo {idx + 1}</h3>
+                  <ul>
+                    {group.map((pair, i) => (
+                      <li key={i}>{pair.map(p => p.name).join(" & ")}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            <button className="button primary" onClick={closeModal}>Fechar</button>
+          </div>
+        </div>
+      )}
+
       <div className="steps-indicator">
         <div className={`step ${step >= 0 ? "active" : ""}`}>0. Selecionar/Criar Torneio</div>
         <div className={`step ${step >= 1 ? "active" : ""}`}>1. Adicionar Jogadores</div>
@@ -172,25 +210,42 @@ const App = () => {
       {/* ========== Passo 0 - Selecionar/Criar Torneio ========== */}
       {step === 0 && (
         <div className="step-content">
-          <h2>Criar ou Selecionar Torneio</h2>
-          <p>Selecione um torneio existente ou crie um novo.</p>
+          <h2 className="tournament-selection-title">Criar ou Selecionar Torneio</h2>
+          <p>Veja grupos ou crie um novo torneio.</p>
 
-          {Object.keys(torneios).length === 0 && <div><em>Nenhum torneio guardado.</em></div>}
+          {Object.keys(torneios).length === 0 && (
+            <div><em>Nenhum torneio guardado.</em></div>
+          )}
 
           <ul>
             {Object.keys(torneios).map((tName) => (
-              <li key={tName} style={{ margin: "5px 0" }}>
-                <button className="button secondary" onClick={() => handleSelectTorneio(tName)}>
-                  {tName}
+              <li key={tName} style={{ margin: "10px 0" }}>
+                <span className="tournament-name-highlight">{tName}</span>
+
+                <button 
+                  className="button info" 
+                  style={{ marginLeft: "10px" }}
+                  onClick={() => handleOpenTournamentModal(tName)}
+                >
+                  Ver Grupos
+                </button>
+
+                <button 
+                  className="button remove"
+                  style={{ marginLeft: "10px" }}
+                  onClick={() => handleRemoveTournament(tName)}
+                >
+                  Remover
                 </button>
               </li>
             ))}
           </ul>
 
-          <div style={{ marginTop: "20px" }}>
+          <div style={{ marginTop: "30px" }}>
             <label htmlFor="newTournamentName">Novo Torneio:</label><br />
             <input
               id="newTournamentName"
+              className="input"
               type="text"
               placeholder="Nome do Torneio"
               onKeyDown={(e) => {
@@ -202,6 +257,7 @@ const App = () => {
             />
             <button
               className="button primary"
+              style={{ marginLeft: "10px" }}
               onClick={() => {
                 const input = document.getElementById("newTournamentName");
                 if (input) {
@@ -218,11 +274,11 @@ const App = () => {
         </div>
       )}
 
-      {/* ========== Passo 1 - Adicionar Jogadores (com peso) ========== */}
+      {/* ========== Restante do fluxo de passos 1..4 ========== */}
       {step === 1 && currentTournament && (
         <div className="step-content">
           <h2>Torneio: {currentTournament}</h2>
-          <p>Adicione os jogadores e ajuste o peso (1-10) se necessário.</p>
+          <p>Adicione os jogadores (peso 1-10).</p>
           <div className="flex-container">
             <NameInput
               label="Jogadores"
@@ -238,7 +294,6 @@ const App = () => {
         </div>
       )}
 
-      {/* ========== Passo 2 - Gerar Pares ========== */}
       {step === 2 && (
         <div className="step-content">
           <h2>Gerar Pares</h2>
@@ -249,7 +304,6 @@ const App = () => {
               <button className="button primary" onClick={generatePairs}>
                 {pairsGenerated ? "Regerar Pares" : "Gerar Pares"}
               </button>
-
               {pairsGenerated && (
                 <>
                   <h3>Pares Gerados</h3>
@@ -280,7 +334,6 @@ const App = () => {
         </div>
       )}
 
-      {/* ========== Passo 3 - Criar Grupos ========== */}
       {step === 3 && (
         <div className="step-content">
           <h2>Criar Grupos</h2>
@@ -294,9 +347,14 @@ const App = () => {
                 min="1"
                 max={pairs.length}
                 value={numGroups}
+                className="input"
                 onChange={(e) => setNumGroups(Number(e.target.value))}
               />
-              <button className="button primary" onClick={createGroupsAutomatically}>
+              <button 
+                className="button primary" 
+                style={{ marginLeft: "10px" }}
+                onClick={createGroupsAutomatically}
+              >
                 Criar Grupos
               </button>
 
@@ -327,7 +385,6 @@ const App = () => {
         </div>
       )}
 
-      {/* ========== Passo 4 - Introduzir / Ver Resultados ========== */}
       {step === 4 && (
         <div className="step-content">
           <h2>Resultados do Torneio</h2>
@@ -350,11 +407,10 @@ const App = () => {
         </div>
       )}
 
-      {/* ========== Passo 5 - Concluído ========== */}
       {step === 5 && (
         <div className="step-content">
           <h2>Torneio Concluído</h2>
-          <p>O torneio terminou. Pode selecionar outro ou criar um novo no Passo 0.</p>
+          <p>O torneio terminou. Pode selecionar ou criar outro torneio.</p>
           <button className="button secondary" onClick={() => setStep(0)}>
             Voltar ao Início
           </button>

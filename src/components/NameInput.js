@@ -91,7 +91,7 @@ const NameInput = ({ label, playerList, setPlayerList }) => {
           placeholder="Ex: Pedro, Maria, Ana"
           rows="3"
         />
-        <button className="button secondary" onClick={addBulkPlayers}>
+        <button className="button primary" onClick={addBulkPlayers}>
           Adicionar Lista
         </button>
       </div>
