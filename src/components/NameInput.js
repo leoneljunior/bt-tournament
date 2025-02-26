@@ -1,17 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import "../styles/Tournament.css";
 
-const NameInput = ({
-  label,
-  playerList,
-  setPlayerList,
-  name,
-  setName,
-  skill,
-  setSkill,
-  bulkNames,
-  setBulkNames
-}) => {
+/**
+ * Componente para adicionar jogadores, com campo de peso (1-10).
+ * Recebe playerList e setPlayerList do componente pai (App.js).
+ */
+const NameInput = ({ label, playerList, setPlayerList }) => {
+  const [name, setName] = useState("");
+  const [skill, setSkill] = useState(5);
+  const [bulkNames, setBulkNames] = useState("");
 
   const addPlayer = () => {
     const trimmedName = name.trim();
@@ -23,29 +20,38 @@ const NameInput = ({
   };
 
   const addBulkPlayers = () => {
-    const namesArray = bulkNames
+    const names = bulkNames
       .split(",")
       .map((n) => n.trim())
       .filter((n) => n !== "");
-
-    if (namesArray.length > 0) {
-      const newPlayers = namesArray.map((n) => ({ name: n, skill: 5 }));
+    if (names.length > 0) {
+      // Para jogadores adicionados em massa, podemos definir skill padrão = 5
+      const newPlayers = names.map((n) => ({ name: n, skill: 5 }));
       setPlayerList([...playerList, ...newPlayers]);
       setBulkNames("");
     }
   };
 
+  // Handler para editar skill diretamente na lista, caso queira
+  const handleSkillChange = (index, newSkill) => {
+    const parsed = parseInt(newSkill, 10);
+    if (parsed >= 1 && parsed <= 10) {
+      const updated = [...playerList];
+      updated[index].skill = parsed;
+      setPlayerList(updated);
+    }
+  };
+
   return (
     <div className="name-input-container">
-      <h2 className="heading">{label || "Adicione Nomes dos Jogadores"}</h2>
+      <h2 className="heading">{label || "Jogadores"}</h2>
       <p className="description">
-        Adicione um jogador com nome e nível de habilidade (1-10) ou cole uma lista de nomes (habilidade padrão 5).
-        Após adicionar, você pode alterar o nível de habilidade antes de prosseguir.
+        Adicione um jogador com nome e peso (1-10) ou utilize a lista em massa.
       </p>
 
       <div className="single-add-section">
         <label className="label" htmlFor="single-player-name">
-          Nome do jogador:
+          Nome do Jogador
         </label>
         <input
           id="single-player-name"
@@ -53,20 +59,19 @@ const NameInput = ({
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Ex: João"
         />
 
         <label className="label" htmlFor="single-player-skill">
-          Nível de habilidade (1-10):
+          Peso (1-10)
         </label>
         <input
           id="single-player-skill"
           className="input"
           type="number"
+          min="1"
+          max="10"
           value={skill}
           onChange={(e) => setSkill(e.target.value)}
-          min={1}
-          max={10}
         />
 
         <button className="button primary" onClick={addPlayer}>
@@ -76,14 +81,14 @@ const NameInput = ({
 
       <div className="bulk-add-section">
         <label className="label" htmlFor="bulk-players">
-          Adicionar vários jogadores (nome apenas, habilidade padrão = 5):
+          Adicionar vários nomes (peso = 5)
         </label>
         <textarea
           id="bulk-players"
           className="textarea"
           value={bulkNames}
           onChange={(e) => setBulkNames(e.target.value)}
-          placeholder="Exemplo: João, Maria, Carlos, Ana"
+          placeholder="Ex: Pedro, Maria, Ana"
           rows="3"
         />
         <button className="button secondary" onClick={addBulkPlayers}>
@@ -98,21 +103,14 @@ const NameInput = ({
             {playerList.map((player, index) => (
               <li className="player-item" key={index}>
                 <strong>{player.name}</strong>
-                <span style={{ margin: "0 10px" }}>Skill:</span>
+                {" - Peso: "}
                 <input
                   type="number"
-                  min={1}
-                  max={10}
+                  min="1"
+                  max="10"
                   value={player.skill}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value, 10);
-                    if (val >= 1 && val <= 10) {
-                      const updated = [...playerList];
-                      updated[index].skill = val;
-                      setPlayerList(updated);
-                    }
-                  }}
-                  style={{ width: "50px" }}
+                  onChange={(e) => handleSkillChange(index, e.target.value)}
+                  style={{ width: "50px", marginLeft: "5px" }}
                 />
               </li>
             ))}
