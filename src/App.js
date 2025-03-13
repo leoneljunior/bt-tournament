@@ -22,15 +22,13 @@ const App = () => {
   const [showModal, setShowModal] = useState(false);
   const [modalTournamentName, setModalTournamentName] = useState("");
 
-  // New states for pairing mode and manual pair input
-  // "random" means the app will generate pairs from the players list
-  // "manual" means the user will input the pairs directly
+  // Modo de formação das duplas: "random" (sorteadas) ou "manual" (formadas)
   const [pairingMode, setPairingMode] = useState("random");
   const [manualName1, setManualName1] = useState("");
   const [manualName2, setManualName2] = useState("");
   const [manualPairList, setManualPairList] = useState("");
 
-  // Load from localStorage on mount
+  // Carrega torneios do localStorage na montagem
   useEffect(() => {
     const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (stored) {
@@ -38,27 +36,30 @@ const App = () => {
     }
   }, []);
 
+  // Salva torneios no localStorage sempre que `torneios` mudar
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(torneios));
   }, [torneios]);
 
+  // Define a etapa (step) com base em quais dados já existem
   const determineStepFromData = (data) => {
     if (data.groups && data.groups.length > 0) {
-      return 3;
+      return 3; // Já existem grupos criados
     }
     if (data.pairs && data.pairs.length > 0) {
-      return 1;
+      return 1; // Já existem duplas
     }
     if (data.players && data.players.length > 0) {
-      return 1;
+      return 1; // Já existem jogadores
     }
-    return 0;
+    return 0;   // Nenhum dado => passo 0
   };
 
   const handleSelectTorneio = (nomeTorneio) => {
     setCurrentTournament(nomeTorneio);
 
     if (!torneios[nomeTorneio]) {
+      // Criando torneio novo
       const novo = {
         players: [],
         pairs: [],
@@ -73,8 +74,10 @@ const App = () => {
       setScores({});
       setPairsGenerated(false);
       setGroupsCreated(false);
+      setPairingMode("random");
       setStep(1);
     } else {
+      // Carregar torneio existente
       const data = torneios[nomeTorneio];
       setPlayers(data.players || []);
       setPairs(data.pairs || []);
@@ -88,7 +91,7 @@ const App = () => {
     }
   };
 
-  /** Removes a tournament from localStorage/state */
+  // Excluir torneio
   const handleRemoveTournament = (nomeTorneio) => {
     const updated = { ...torneios };
     delete updated[nomeTorneio];
@@ -99,6 +102,7 @@ const App = () => {
     }
   };
 
+  // Abre modal para ver/editar torneio
   const handleOpenTournamentModal = (tName) => {
     setModalTournamentName(tName);
     setShowModal(true);
@@ -109,6 +113,7 @@ const App = () => {
     setModalTournamentName("");
   };
 
+  // Salva dados do torneio atual no state e localStorage
   const saveCurrentTournamentData = (updates) => {
     if (!currentTournament) return;
     setTorneios((prev) => ({
@@ -120,6 +125,7 @@ const App = () => {
     }));
   };
 
+  // Se estivermos no step 0 e o torneio atual tiver jogadores, zeramos duplas e grupos
   useEffect(() => {
     if (step === 0 && currentTournament) {
       saveCurrentTournamentData({ players });
@@ -128,9 +134,11 @@ const App = () => {
     }
   }, [players, step]);
 
+  // Avançar ou voltar step
   const goNext = () => setStep((prev) => prev + 1);
   const goBack = () => step > 0 && setStep((prev) => prev - 1);
 
+  // Gera duplas (modo random) a partir de `players`
   const generatePairs = () => {
     const playersWithTiebreak = players.map((p) => ({
       ...p,
@@ -158,7 +166,7 @@ const App = () => {
     saveCurrentTournamentData({ pairs: newPairs });
   };
 
-  // New functions for manual pair input
+  // Adicionar dupla manualmente
   const addManualPair = () => {
     const name1 = manualName1.trim();
     const name2 = manualName2.trim();
@@ -173,6 +181,7 @@ const App = () => {
     }
   };
 
+  // Adicionar várias duplas manuais em lista
   const addManualPairList = () => {
     const list = manualPairList.trim();
     if (list) {
@@ -189,7 +198,7 @@ const App = () => {
     }
   };
 
-  // 🔴 AQUI ESTÁ A CORREÇÃO: embaralhar as duplas antes de criar os grupos.
+  // Cria grupos embaralhando duplas antes
   const createGroupsAutomatically = () => {
     const shuffledPairs = [...pairs];
 
@@ -209,6 +218,7 @@ const App = () => {
     saveCurrentTournamentData({ groups: generatedGroups });
   };
 
+  // Retorna grupos de um torneio
   const getTournamentGroups = (tName) => {
     const tData = torneios[tName];
     if (!tData || !tData.groups) return [];
@@ -219,28 +229,18 @@ const App = () => {
     <div className="app-container">
       <h1>Organizador de Torneios BT</h1>
 
+      {/* ========== Modal para exibir/editar torneio ========== */}
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-content">
             <h2 className="modal-tournament-title">{modalTournamentName}</h2>
-            <p>Grupos e duplas:</p>
-
-            <div className="modal-groups-container">
-              {getTournamentGroups(modalTournamentName).length === 0 && (
-                <p><em>Nenhum grupo criado para este torneio.</em></p>
-              )}
-
-              {getTournamentGroups(modalTournamentName).map((group, idx) => (
-                <div className="group-card" key={idx}>
-                  <h3>Grupo {idx + 1}</h3>
-                  <ul>
-                    {group.map((pair, i) => (
-                      <li key={i}>{pair.map(p => p.name).join(" & ")}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
+            {/* Mostra o componente Tournament dentro do modal */}
+            <Tournament
+              groups={getTournamentGroups(modalTournamentName)}
+              currentTournament={modalTournamentName}
+              torneios={torneios}
+              setTorneios={setTorneios}
+            />
 
             <button className="button primary" onClick={closeModal}>Fechar</button>
           </div>
@@ -259,7 +259,7 @@ const App = () => {
       {step === 0 && (
         <div className="step-content">
           <h2 className="tournament-selection-title">Criar ou Selecionar Torneio</h2>
-          <p>Veja grupos ou crie um novo torneio.</p>
+          <p>Veja/edite o torneio ou crie um novo.</p>
 
           {Object.keys(torneios).length === 0 && (
             <div><em>Nenhum torneio guardado.</em></div>
@@ -270,12 +270,13 @@ const App = () => {
               <li key={tName} style={{ margin: "10px 0" }}>
                 <span className="tournament-name-highlight">{tName}</span>
 
+                {/* Mudamos aqui: de 'Ver Grupos' para 'Ver Torneio' */}
                 <button 
                   className="button info" 
                   style={{ marginLeft: "10px" }}
                   onClick={() => handleOpenTournamentModal(tName)}
                 >
-                  Ver Grupos
+                  Ver Torneio
                 </button>
 
                 <button 
@@ -322,7 +323,7 @@ const App = () => {
         </div>
       )}
 
-      {/* ========== Passo 1 - Adicionar Duplas (seleção de modo) ========== */}
+      {/* ========== Passo 1 - Adicionar Duplas ========== */}
       {step === 1 && currentTournament && (
         <div className="step-content">
           <h2>Torneio: {currentTournament}</h2>
@@ -345,7 +346,11 @@ const App = () => {
             <>
               <p>Adicione os jogadores (peso 1-10):</p>
               <div className="flex-container">
-                <NameInput label="Jogadores" playerList={players} setPlayerList={setPlayers} />
+                <NameInput
+                  label="Jogadores"
+                  playerList={players}
+                  setPlayerList={setPlayers}
+                />
               </div>
               {players.length > 0 && (
                 <>
@@ -408,7 +413,11 @@ const App = () => {
                   className="textarea"
                   rows="3"
                 />
-                <button className="button primary" onClick={addManualPairList} style={{ marginLeft: "10px", marginTop: "10px" }}>
+                <button
+                  className="button primary"
+                  onClick={addManualPairList}
+                  style={{ marginLeft: "10px", marginTop: "10px" }}
+                >
                   Adicionar Lista de Duplas
                 </button>
               </div>
