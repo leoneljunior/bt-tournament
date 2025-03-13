@@ -22,6 +22,14 @@ const App = () => {
   const [showModal, setShowModal] = useState(false);
   const [modalTournamentName, setModalTournamentName] = useState("");
 
+  // New states for pairing mode and manual pair input
+  // "random" means the app will generate pairs from the players list
+  // "manual" means the user will input the pairs directly
+  const [pairingMode, setPairingMode] = useState("random");
+  const [manualName1, setManualName1] = useState("");
+  const [manualName2, setManualName2] = useState("");
+  const [manualPairList, setManualPairList] = useState("");
+
   // Load from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -36,15 +44,15 @@ const App = () => {
 
   const determineStepFromData = (data) => {
     if (data.groups && data.groups.length > 0) {
-      return 4;
-    }
-    if (data.pairs && data.pairs.length > 0) {
       return 3;
     }
-    if (data.players && data.players.length > 0) {
-      return 2;
+    if (data.pairs && data.pairs.length > 0) {
+      return 1;
     }
-    return 1;
+    if (data.players && data.players.length > 0) {
+      return 1;
+    }
+    return 0;
   };
 
   const handleSelectTorneio = (nomeTorneio) => {
@@ -113,7 +121,7 @@ const App = () => {
   };
 
   useEffect(() => {
-    if (step === 1 && currentTournament) {
+    if (step === 0 && currentTournament) {
       saveCurrentTournamentData({ players });
       setPairsGenerated(false);
       setGroupsCreated(false);
@@ -150,9 +158,49 @@ const App = () => {
     saveCurrentTournamentData({ pairs: newPairs });
   };
 
+  // New functions for manual pair input
+  const addManualPair = () => {
+    const name1 = manualName1.trim();
+    const name2 = manualName2.trim();
+    if (name1 && name2) {
+      const newPair = [{ name: name1, skill: 5 }, { name: name2, skill: 5 }];
+      const updatedPairs = [...pairs, newPair];
+      setPairs(updatedPairs);
+      saveCurrentTournamentData({ pairs: updatedPairs });
+      setManualName1("");
+      setManualName2("");
+      setPairsGenerated(true);
+    }
+  };
+
+  const addManualPairList = () => {
+    const list = manualPairList.trim();
+    if (list) {
+      const pairStrings = list.split(",").map(s => s.trim()).filter(s => s);
+      const newPairs = pairStrings.map(pairStr => {
+        const [p1, p2] = pairStr.split("/").map(s => s.trim());
+        return [{ name: p1, skill: 5 }, { name: p2, skill: 5 }];
+      });
+      const updatedPairs = [...pairs, ...newPairs];
+      setPairs(updatedPairs);
+      saveCurrentTournamentData({ pairs: updatedPairs });
+      setManualPairList("");
+      setPairsGenerated(true);
+    }
+  };
+
+  // 🔴 AQUI ESTÁ A CORREÇÃO: embaralhar as duplas antes de criar os grupos.
   const createGroupsAutomatically = () => {
+    const shuffledPairs = [...pairs];
+
+    // Fisher-Yates shuffle
+    for (let i = shuffledPairs.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledPairs[i], shuffledPairs[j]] = [shuffledPairs[j], shuffledPairs[i]];
+    }
+
     const generatedGroups = Array.from({ length: numGroups }, () => []);
-    pairs.forEach((pair, index) => {
+    shuffledPairs.forEach((pair, index) => {
       generatedGroups[index % numGroups].push(pair);
     });
     setGroups(generatedGroups);
@@ -201,10 +249,10 @@ const App = () => {
 
       <div className="steps-indicator">
         <div className={`step ${step >= 0 ? "active" : ""}`}>0. Selecionar/Criar Torneio</div>
-        <div className={`step ${step >= 1 ? "active" : ""}`}>1. Adicionar Jogadores</div>
-        <div className={`step ${step >= 2 ? "active" : ""}`}>2. Gerar Pares</div>
-        <div className={`step ${step >= 3 ? "active" : ""}`}>3. Criar Grupos</div>
-        <div className={`step ${step >= 4 ? "active" : ""}`}>4. Resultados</div>
+        <div className={`step ${step >= 1 ? "active" : ""}`}>1. Adicionar Duplas</div>
+        <div className={`step ${step >= 2 ? "active" : ""}`}>2. Criar Grupos</div>
+        <div className={`step ${step >= 3 ? "active" : ""}`}>3. Resultados</div>
+        <div className={`step ${step >= 4 ? "active" : ""}`}>4. Torneio Concluído</div>
       </div>
 
       {/* ========== Passo 0 - Selecionar/Criar Torneio ========== */}
@@ -274,42 +322,102 @@ const App = () => {
         </div>
       )}
 
-      {/* ========== Restante do fluxo de passos 1..4 ========== */}
+      {/* ========== Passo 1 - Adicionar Duplas (seleção de modo) ========== */}
       {step === 1 && currentTournament && (
         <div className="step-content">
           <h2>Torneio: {currentTournament}</h2>
-          <p>Adicione os jogadores (peso 1-10).</p>
-          <div className="flex-container">
-            <NameInput
-              label="Jogadores"
-              playerList={players}
-              setPlayerList={setPlayers}
-            />
+          <div style={{ marginBottom: "20px" }}>
+            <button
+              className={pairingMode === "random" ? "button primary" : "button secondary"}
+              onClick={() => setPairingMode("random")}
+              style={{ marginRight: "10px" }}
+            >
+              Duplas Sorteadas
+            </button>
+            <button
+              className={pairingMode === "manual" ? "button primary" : "button secondary"}
+              onClick={() => setPairingMode("manual")}
+            >
+              Duplas Formadas
+            </button>
           </div>
-
-          {players.length > 0 && (
-            <button className="button primary" onClick={goNext}>Avançar</button>
-          )}
-          <button className="button secondary" onClick={goBack}>Voltar</button>
-        </div>
-      )}
-
-      {step === 2 && (
-        <div className="step-content">
-          <h2>Gerar Pares</h2>
-          {players.length === 0 ? (
-            <p><em>Nenhum jogador adicionado.</em></p>
+          {pairingMode === "random" ? (
+            <>
+              <p>Adicione os jogadores (peso 1-10):</p>
+              <div className="flex-container">
+                <NameInput label="Jogadores" playerList={players} setPlayerList={setPlayers} />
+              </div>
+              {players.length > 0 && (
+                <>
+                  <button className="button primary" onClick={generatePairs}>
+                    {pairsGenerated ? "Regerar Pares" : "Gerar Pares"}
+                  </button>
+                  {pairsGenerated && (
+                    <>
+                      <h3>Pares Gerados</h3>
+                      <table className="pairs-table">
+                        <thead>
+                          <tr><th>Par</th></tr>
+                        </thead>
+                        <tbody>
+                          {pairs.map((pair, i) => (
+                            <tr key={i}>
+                              <td>{pair.map(p => p.name).join(" & ")}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
+                  {pairsGenerated && (
+                    <button className="button primary" onClick={goNext}>
+                      Avançar
+                    </button>
+                  )}
+                </>
+              )}
+            </>
           ) : (
             <>
-              <button className="button primary" onClick={generatePairs}>
-                {pairsGenerated ? "Regerar Pares" : "Gerar Pares"}
-              </button>
-              {pairsGenerated && (
+              <h3>Adicionar Duplas Formadas</h3>
+              <div>
+                <input
+                  type="text"
+                  placeholder="Nome do Jogador 1"
+                  value={manualName1}
+                  onChange={(e) => setManualName1(e.target.value)}
+                  className="input"
+                  style={{ marginRight: "10px" }}
+                />
+                <input
+                  type="text"
+                  placeholder="Nome do Jogador 2"
+                  value={manualName2}
+                  onChange={(e) => setManualName2(e.target.value)}
+                  className="input"
+                />
+                <button className="button primary" onClick={addManualPair} style={{ marginLeft: "10px" }}>
+                  Adicionar Dupla
+                </button>
+              </div>
+              <div style={{ marginTop: "20px" }}>
+                <textarea
+                  placeholder='Ex: "Leonel/Douglas, Davi/Marcos"'
+                  value={manualPairList}
+                  onChange={(e) => setManualPairList(e.target.value)}
+                  className="textarea"
+                  rows="3"
+                />
+                <button className="button primary" onClick={addManualPairList} style={{ marginLeft: "10px", marginTop: "10px" }}>
+                  Adicionar Lista de Duplas
+                </button>
+              </div>
+              {pairs.length > 0 && (
                 <>
-                  <h3>Pares Gerados</h3>
+                  <h3>Duplas Formadas</h3>
                   <table className="pairs-table">
                     <thead>
-                      <tr><th>Par</th></tr>
+                      <tr><th>Dupla</th></tr>
                     </thead>
                     <tbody>
                       {pairs.map((pair, i) => (
@@ -319,22 +427,19 @@ const App = () => {
                       ))}
                     </tbody>
                   </table>
+                  <button className="button primary" onClick={goNext}>
+                    Avançar
+                  </button>
                 </>
               )}
             </>
           )}
-          <div style={{ marginTop: "20px" }}>
-            <button className="button secondary" onClick={goBack}>Voltar</button>
-            {pairsGenerated && (
-              <button className="button primary" onClick={goNext}>
-                Avançar
-              </button>
-            )}
-          </div>
+          <button className="button secondary" onClick={goBack}>Voltar</button>
         </div>
       )}
 
-      {step === 3 && (
+      {/* ========== Passo 2 - Criar Grupos ========== */}
+      {step === 2 && (
         <div className="step-content">
           <h2>Criar Grupos</h2>
           {pairs.length === 0 ? (
@@ -385,7 +490,8 @@ const App = () => {
         </div>
       )}
 
-      {step === 4 && (
+      {/* ========== Passo 3 - Resultados ========== */}
+      {step === 3 && (
         <div className="step-content">
           <h2>Resultados do Torneio</h2>
           {groups.length > 0 ? (
@@ -402,12 +508,13 @@ const App = () => {
           )}
           <div style={{ marginTop: "20px" }}>
             <button className="button secondary" onClick={goBack}>Voltar</button>
-            <button className="button primary" onClick={() => setStep(5)}>Concluir</button>
+            <button className="button primary" onClick={() => setStep(4)}>Concluir</button>
           </div>
         </div>
       )}
 
-      {step === 5 && (
+      {/* ========== Passo 4 - Torneio Concluído ========== */}
+      {step === 4 && (
         <div className="step-content">
           <h2>Torneio Concluído</h2>
           <p>O torneio terminou. Pode selecionar ou criar outro torneio.</p>
